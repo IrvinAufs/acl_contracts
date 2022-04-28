@@ -51,14 +51,6 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
         _setURI(domain, fullPath, hash);
     }
 
-    function withdrawTax(address account, uint value) public override onlyOwner returns (bool success) {
-        require (_totalTaxes >= value);
-
-        _totalTaxes -= value;
-
-        return IERC223(_token).transfer(account, value);
-    }
-
     function tokenReceived(address _from, uint _value, bytes memory _data) public override {
         string memory path;
         address owner;
@@ -73,6 +65,18 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
             revert("purchase failed");
 
         setAuthorization(path, PathAttribute.Read, owner, _from, expireUntil);
+    }
+
+    function setTaxRate(uint8 newRate) public override onlyOwner returns (bool success) {
+        return super.setTaxRate(newRate);
+    }
+
+    function withdrawTax(address account, uint value) public override onlyOwner returns (bool success) {
+        require (_totalTaxes >= value);
+
+        _totalTaxes -= value;
+
+        return IERC223(_token).transfer(account, value);
     }
 
     function computeExpire(uint32 value) internal view returns (uint32) {
