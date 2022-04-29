@@ -60,8 +60,8 @@ contract("Web3Tube Events Test", (accounts) => {
         let userPrice = await web3tube.defaultPrice.call({from: accounts[1]});
         assert.ok(defaultPrice.toString() === userPrice.toString(), "user price not equal to default price");
 
-        let updatedPrice = web3.utils.toBN('100') * 10;
-        assert(updatedPrice.toString() !== defaultPrice.toString());
+        let updatedPrice = web3.utils.toBN('100') * 11;
+        assert.ok(updatedPrice.toString() !== defaultPrice.toString());
         await truffleAssert.passes(web3tube.setUserPrice.sendTransaction(updatedPrice, {from: accounts[1]}));
         userPrice = await web3tube.defaultPrice.call({from: accounts[1]});
         assert.ok(userPrice.toString() === updatedPrice.toString(), "user price not update");
@@ -82,7 +82,7 @@ contract("Web3Tube Events Test", (accounts) => {
         const web3tube = await Web3Tube.deployed();
         const token = await AuroraToken.deployed();
 
-        let defaultPrice = await web3tube.defaultPrice();
+        let defaultPrice = await web3tube.defaultPrice.call({from: accounts[1]});
 
         let balance1, balance2, taxes;
 
