@@ -14,6 +14,8 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
 
     uint256 private _defaultPrice;
 
+    mapping (address => uint256) private _defaultUserPrice;
+
     constructor(uint8 taxRate, uint256 price, string memory schema, string memory directory, address ERC223Token) Web3Auth(schema, directory) TokenTax(taxRate) {
         require(Address.isContract(ERC223Token));
         _token = ERC223Token;
@@ -55,19 +57,19 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
         _setURI(domain, fullPath, hash);
     }
 
-    function defaultPrice() public view returns (uint256) {
-        return _defaultPrice;
+    function defaultPrice() public view returns (uint256 price) {
+        return defaultPrice(_msgSender());
     }
 
     function tokenReceived(address _from, uint _value, bytes memory _data) public override {
-        if (_value < _defaultPrice)
-            revert("paid price is too low");
-
         string memory path;
         address owner;
         uint32 expire;
 
         (path, owner, expire) = decodeCallbackData(_data);
+
+        if (_value < defaultPrice(owner))
+            revert("paid price is too low");
 
         uint32 expireUntil = computeExpire(expire);
 
@@ -92,6 +94,10 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
 
     function setDefaultPrice(uint256 price) public onlyOwner {
         _defaultPrice = price;
+    }
+
+    function setUserPrice(uint256 price) public {
+        _defaultUserPrice[_msgSender()] = price;
     }
 
     function computeExpire(uint32 value) internal view returns (uint32) {
@@ -123,6 +129,15 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
         uint32 _blocks
     ) {
         return abi.decode(data, (string, address, uint32));
+    }
+
+    function defaultPrice(address account) internal view returns (uint256 price) {
+        price = _defaultUserPrice[account];
+
+        if (price == 0)
+            return _defaultPrice;
+
+        return price;
     }
 
     function setAuthorization(string memory path, PathAttribute pathAttr, address owner, address licensee, uint32 expireUntil) internal forwardSlash(path) {

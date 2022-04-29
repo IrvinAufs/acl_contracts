@@ -53,6 +53,31 @@ contract("Web3Tube Events Test", (accounts) => {
         });
     });
 
+    it("update price", async () => {
+        const web3tube = await Web3Tube.deployed();
+
+        let defaultPrice = await web3tube.defaultPrice();
+        let userPrice = await web3tube.defaultPrice.call({from: accounts[1]});
+        assert.ok(defaultPrice.toString() === userPrice.toString(), "user price not equal to default price");
+
+        let updatedPrice = web3.utils.toBN('1000000000') * 10;
+        assert(updatedPrice.toString() !== defaultPrice.toString());
+        await truffleAssert.passes(web3tube.setUserPrice.sendTransaction(updatedPrice, {from: accounts[1]}));
+        userPrice = await web3tube.defaultPrice.call({from: accounts[1]});
+        assert.ok(userPrice.toString() === updatedPrice.toString(), "user price not update");
+
+        let currentDefaultPrice = await web3tube.defaultPrice();
+        assert.ok(currentDefaultPrice.toString() === defaultPrice.toString(), "default price updated");
+
+        let updatedDefaultPrice = web3.utils.toBN('1000000000') * 7;
+        assert.ok(updatedDefaultPrice.toString() !== defaultPrice.toString());
+        await truffleAssert.passes(web3tube.setDefaultPrice.sendTransaction(updatedDefaultPrice));
+        userPrice = await web3tube.defaultPrice.call({from: accounts[1]});
+        let userPrice1 = await web3tube.defaultPrice.call({from: accounts[2]});
+        assert.ok(userPrice.toString() === updatedPrice.toString() && userPrice.toString() !== updatedDefaultPrice.toString(), "user price not equal to updated value");
+        assert.ok(userPrice1.toString() === updatedDefaultPrice.toString(), "user1 price not equal to updated default");
+    });
+
     it("test transfer", async () => {
         const web3tube = await Web3Tube.deployed();
         const token = await AuroraToken.deployed();
@@ -84,6 +109,10 @@ contract("Web3Tube Events Test", (accounts) => {
         let value = web3.utils.toBN('1000000000') * 3;
         assert.ok(value < defaultPrice, "current paid price must lower than default");
         truffleAssert.reverts(token.methods['transfer(address,uint256,bytes)'].sendTransaction(web3tube.address, value, web3.utils.hexToBytes(data), {from: accounts[2]}), "paid price is too low");
+        let currentBalance2 = await token.balanceOf(accounts[2]);
+        assert.ok(currentBalance2.toString() === balance2.toString(), "account2 paid success");
+        let currentBalance1 = await token.balanceOf(accounts[1]);
+        assert.ok(currentBalance1.toString() === balance1.toString(), "account1 got money from account1");
 
         let result = await token.methods['transfer(address,uint256,bytes)'].sendTransaction(web3tube.address, defaultPrice, web3.utils.hexToBytes(data), {from: accounts[2]});
 
