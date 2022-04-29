@@ -8,6 +8,21 @@ contract("Web3Tube Events Test", (accounts) => {
     const filePath = fullPath + "/movie1.mp4";
     const cid = "0x6b18e70d5beb530a13e867a82444ac6b064697ab59818a868d32c3dea33d507c";
 
+    it("only owner can change", async () => {
+        const web3tube = await Web3Tube.deployed();
+
+        let defaultPrice = await web3tube.defaultPrice();
+        let updatedPrice = defaultPrice * 2;
+
+        await truffleAssert.fails(web3tube.setDefaultPrice.sendTransaction(updatedPrice, {from: accounts[1]}));
+        let currentPrice = await web3tube.defaultPrice();
+        assert.ok(currentPrice.toString() === defaultPrice.toString(), "price update");
+
+        await truffleAssert.passes(web3tube.setDefaultPrice.sendTransaction(updatedPrice, {from: accounts[0]}));
+        currentPrice = await web3tube.defaultPrice();
+        assert.ok(currentPrice.toString() === updatedPrice.toString(), "price not update");
+    })
+
     it("should emit SetDelegate event", async () => {
         const web3tube = await Web3Tube.deployed();
 
@@ -42,9 +57,11 @@ contract("Web3Tube Events Test", (accounts) => {
         const web3tube = await Web3Tube.deployed();
         const token = await AuroraToken.deployed();
 
+        let defaultPrice = await web3tube.defaultPrice();
+
         let balance1, balance2, taxes;
 
-        await token.methods['transfer(address,uint256)'].sendTransaction(accounts[2], web3.utils.toBN('1000000000') * 10, {from: accounts[0]});
+        await token.methods['transfer(address,uint256)'].sendTransaction(accounts[2], web3.utils.toBN('1000000000') * 30, {from: accounts[0]});
 
         await web3tube.setDelegate.sendTransaction(path, 1, false, {from: accounts[1]});
         await web3tube.setDelegate.sendTransaction(path, 2, false, {from: accounts[1]});
@@ -63,8 +80,12 @@ contract("Web3Tube Events Test", (accounts) => {
         console.log("web3tube total taxes:" + (taxes/1e9));
 
         let data = web3.eth.abi.encodeParameters(['string', 'address', 'uint32'], [filePath, accounts[1], '300']);
-        let value = web3.utils.toBN('1000000000') * 10;
-        let result = await token.methods['transfer(address,uint256,bytes)'].sendTransaction(web3tube.address, value, web3.utils.hexToBytes(data), {from: accounts[2]});
+
+        let value = web3.utils.toBN('1000000000') * 3;
+        assert.ok(value < defaultPrice, "current paid price must lower than default");
+        truffleAssert.reverts(token.methods['transfer(address,uint256,bytes)'].sendTransaction(web3tube.address, value, web3.utils.hexToBytes(data), {from: accounts[2]}), "paid price is too low");
+
+        let result = await token.methods['transfer(address,uint256,bytes)'].sendTransaction(web3tube.address, defaultPrice, web3.utils.hexToBytes(data), {from: accounts[2]});
 
         web3.eth.getBlockNumber().then((n) => {
             console.log("current block number: " + n);

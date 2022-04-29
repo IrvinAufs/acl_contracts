@@ -10,11 +10,15 @@ import "./utils/Address.sol";
 
 contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
 
-    address _token;
+    address private _token;
 
-    constructor(uint8 taxRate, string memory schema, string memory directory, address ERC223Token) Web3Auth(schema, directory) TokenTax(taxRate) {
+    uint256 private _defaultPrice;
+
+    constructor(uint8 taxRate, uint256 price, string memory schema, string memory directory, address ERC223Token) Web3Auth(schema, directory) TokenTax(taxRate) {
         require(Address.isContract(ERC223Token));
         _token = ERC223Token;
+
+        _defaultPrice = price;
     }
 
     function setDelegate(string calldata path, PathAttribute pathAttr, bool remove) external override forwardSlash(path) {
@@ -51,7 +55,14 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
         _setURI(domain, fullPath, hash);
     }
 
+    function defaultPrice() public view returns (uint256) {
+        return _defaultPrice;
+    }
+
     function tokenReceived(address _from, uint _value, bytes memory _data) public override {
+        if (_value < _defaultPrice)
+            revert("paid price is too low");
+
         string memory path;
         address owner;
         uint32 expire;
@@ -77,6 +88,10 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
         _totalTaxes -= value;
 
         return IERC223(_token).transfer(account, value);
+    }
+
+    function setDefaultPrice(uint256 price) public onlyOwner {
+        _defaultPrice = price;
     }
 
     function computeExpire(uint32 value) internal view returns (uint32) {
