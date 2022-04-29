@@ -22,7 +22,7 @@ contract AuroraToken is IERC223, Ownable {
     }
 
     function decimals() public view override returns (uint8) {
-        return 9;
+        return 2;
     }
 
     function balanceOf(address account) public view override returns (uint256) {
