@@ -2,7 +2,7 @@ const AuroraToken = artifacts.require('AuroraToken');
 const truffleAssert = require('truffle-assertions');
 
 contract("Aurora Token Test", (accounts) => {
-    const coinValue = web3.utils.toBN('1000000000');
+    const coinValue = web3.utils.toBN('100');
     const defaultAmount = coinValue * 1000;
 
     it("always has default amounts", async () => {
