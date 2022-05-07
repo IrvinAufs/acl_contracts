@@ -7,7 +7,7 @@ abstract contract Web3Auth {
 
     using strings for *;
 
-    enum PathAttribute { Noop, Read, Write }
+    enum PathAttribute {Noop, Read, Write}
 
     string _schema;
 
@@ -28,13 +28,13 @@ abstract contract Web3Auth {
 
     event $SetDelegate(string domain, string path, PathAttribute pathAttr, bool remove, address trustee);
 
-    event $SetAuthorization(string domain, string path, PathAttribute pathAttr, address licensee, uint32 expireUntil);
+    event $SetAuthorization(string domain, string path, PathAttribute pathAttr, address owner, address licensee, uint32 expire);
 
     event $SetURI(string domain, string path, bytes32 hash);
 
     function setDelegate(string calldata path, PathAttribute pathAttr, bool remove) external virtual;
 
-    function setAuthorization(string calldata path, uint32 expire) external virtual;
+    function setAuthorization(string calldata path, uint32 interval) external virtual;
 
     function setURI(address owner, string calldata path, bytes32 hash) external virtual;
 
@@ -59,8 +59,8 @@ abstract contract Web3Auth {
         emit $SetDelegate(domain, path, pathAttr, remove, trustee);
     }
 
-    function _setAuthorization(string memory domain, string memory path, PathAttribute pathAttr, address licensee, uint32 expireUntil) internal virtual {
-        emit $SetAuthorization(domain, path, pathAttr, licensee, expireUntil);
+    function _setAuthorization(string memory domain, string memory path, PathAttribute pathAttr, address owner, address licensee, uint32 expire) internal virtual {
+        emit $SetAuthorization(domain, path, pathAttr, owner, licensee, expire);
     }
 
     function _setURI(string memory domain, string memory path, bytes32 hash) internal virtual {

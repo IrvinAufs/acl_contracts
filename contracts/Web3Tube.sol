@@ -14,7 +14,7 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
 
     uint256 private _defaultPrice;
 
-    mapping (address => uint256) private _defaultUserPrice;
+    mapping(address => uint256) private _defaultUserPrice;
 
     constructor(uint8 taxRate, uint256 price, string memory schema, string memory directory, address ERC223Token) Web3Auth(schema, directory) TokenTax(taxRate) {
         require(Address.isContract(ERC223Token));
@@ -30,11 +30,11 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
         _setDelegate(domain, fullPath, pathAttr, remove, address(this));
     }
 
-    function setAuthorization(string calldata path, uint32 expire) external override forwardSlash(path) {
+    function setAuthorization(string calldata path, uint32 interval) external override forwardSlash(path) {
         address owner = _msgSender();
-        uint32 expireUntil = computeExpire(expire);
+        uint32 expire = computeExpire(interval);
 
-        setAuthorization(path, PathAttribute.Write, owner, address(this), expireUntil);
+        setAuthorization(path, PathAttribute.Write, owner, address(this), expire);
     }
 
     function removeAuthorization(string calldata path, address licensee, PathAttribute pathAttr) external forwardSlash(path) {
@@ -62,22 +62,25 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
     }
 
     function tokenReceived(address _from, uint _value, bytes memory _data) public override {
+
+        require(_msgSender() == _token, 'Incorrect contract address');
+
         string memory path;
         address owner;
-        uint32 expire;
+        uint32 interval;
 
-        (path, owner, expire) = decodeCallbackData(_data);
+        (path, owner, interval) = decodeCallbackData(_data);
 
         if (_value < defaultPrice(owner))
             revert("paid price is too low");
 
-        uint32 expireUntil = computeExpire(expire);
+        uint32 expire = computeExpire(interval);
 
         uint remainValue = payTax(_value);
         if (!IERC223(_token).transfer(owner, remainValue))
             revert("purchase failed");
 
-        setAuthorization(path, PathAttribute.Read, owner, _from, expireUntil);
+        setAuthorization(path, PathAttribute.Read, owner, _from, expire);
     }
 
     function setTaxRate(uint8 newRate) public override onlyOwner returns (bool success) {
@@ -85,7 +88,7 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
     }
 
     function withdrawTax(address account, uint value) public override onlyOwner returns (bool success) {
-        require (_totalTaxes >= value);
+        require(_totalTaxes >= value);
 
         _totalTaxes -= value;
 
@@ -117,8 +120,8 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
         str[0] = "0";
         str[1] = "x";
         for (uint i = 0; i < 20; i++) {
-            str[2+i*2] = alphabet[uint(uint8(value[i + 12] >> 4))];
-            str[3+i*2] = alphabet[uint(uint8(value[i + 12] & 0x0f))];
+            str[2 + i * 2] = alphabet[uint(uint8(value[i + 12] >> 4))];
+            str[3 + i * 2] = alphabet[uint(uint8(value[i + 12] & 0x0f))];
         }
         return string(str);
     }
@@ -140,11 +143,11 @@ contract Web3Tube is Web3Auth, IERC223Recipient, TokenTax, Ownable {
         return price;
     }
 
-    function setAuthorization(string memory path, PathAttribute pathAttr, address owner, address licensee, uint32 expireUntil) internal forwardSlash(path) {
+    function setAuthorization(string memory path, PathAttribute pathAttr, address owner, address licensee, uint32 expire) internal forwardSlash(path) {
         string memory fullPath = concatPath(path);
         string memory domain = concatDomain(addressToHex(owner));
 
-        _setAuthorization(domain, fullPath, pathAttr, licensee, expireUntil);
+        _setAuthorization(domain, fullPath, pathAttr, owner, licensee, expire);
     }
 
     function payTax(uint value) internal override returns (uint taxed) {
